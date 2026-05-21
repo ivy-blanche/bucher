@@ -1,0 +1,55 @@
+# 测试环境配置
+server:
+  port: 0
+
+spring:
+  datasource:
+    driver-class-name: org.h2.Driver
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=MySQL
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+# JWT 配置
+jwt:
+  secret: test-jwt-secret-key-must-be-at-least-256-bits-long-for-hs256
+  expiration: 86400000
+
+# 验证码配置
+code:
+  email:
+    expire: 300
+    interval: 60
+    length: 6
+
+# 邮件配置（测试环境禁用真实发送）
+spring:
+  mail:
+    host: localhost
+    port: 25
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+
+# 管理员重置密码的默认密码
+user:
+  default-password: Zx@123456
+
+# 日志配置
+logging:
+  level:
+    com.bucher: debug

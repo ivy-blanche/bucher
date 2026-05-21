@@ -1,0 +1,69 @@
+<script setup lang="ts">
+import AdminLayout from '@/layouts/AdminLayout.vue'
+</script>
+
+<template>
+  <AdminLayout>
+    <div class="placeholder-page">
+      <div class="placeholder-card">
+        <div class="placeholder-icon">
+          <svg viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="12" y="48" width="12" height="20" rx="1" />
+            <rect x="34" y="32" width="12" height="36" rx="1" />
+            <rect x="56" y="16" width="12" height="52" rx="1" />
+          </svg>
+        </div>
+        <h2>学习情况</h2>
+        <p>功能开发中，敬请期待...</p>
+      </div>
+    </div>
+  </AdminLayout>
+</template>
+
+<style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+.placeholder-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
+  padding: 40px;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.placeholder-card {
+  text-align: center;
+  padding: 60px 80px;
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 24px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 102, 255, 0.08);
+}
+
+.placeholder-icon {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 24px;
+  color: #a0b8d0;
+}
+
+.placeholder-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.placeholder-card h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a3a5a;
+  margin: 0 0 12px;
+}
+
+.placeholder-card p {
+  font-size: 15px;
+  color: #7a9aba;
+  margin: 0;
+}
+</style>

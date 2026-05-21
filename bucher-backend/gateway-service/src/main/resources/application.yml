@@ -1,0 +1,103 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active: local
+  application:
+    name: gateway-service
+  main:
+    allow-bean-definition-overriding: true
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 用户服务
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=2
+
+        # 课程服务
+        - id: course-service
+          uri: lb://course-service
+          predicates:
+            - Path=/api/course/**
+          filters:
+            - StripPrefix=1
+
+        # 题库服务
+        - id: question-service
+          uri: lb://question-service
+          predicates:
+            - Path=/api/question/**
+          filters:
+            - StripPrefix=1
+
+        # 考试服务
+        - id: exam-service
+          uri: lb://exam-service
+          predicates:
+            - Path=/api/exam/**
+          filters:
+            - StripPrefix=1
+
+        # 作业服务
+        - id: homework-service
+          uri: lb://homework-service
+          predicates:
+            - Path=/api/homework/**
+          filters:
+            - StripPrefix=1
+
+        # 成绩服务
+        - id: grade-service
+          uri: lb://grade-service
+          predicates:
+            - Path=/api/grade/**
+          filters:
+            - StripPrefix=1
+
+        # 消息服务
+        - id: message-service
+          uri: lb://message-service
+          predicates:
+            - Path=/api/message/**
+          filters:
+            - StripPrefix=2
+
+        # AI 服务
+        - id: ai-service
+          uri: lb://ai-service
+          predicates:
+            - Path=/api/ai/**
+          filters:
+            - StripPrefix=1
+
+# Sentinel 配置
+spring.cloud.sentinel:
+  transport:
+    dashboard: localhost:8080
+  eager: true
+
+# JWT 白名单（无需认证的路径，Ant 风格逗号分隔，匹配 StripPrefix 前的原始路径）
+jwt:
+  white-list: /api/user/auth/login,/api/user/auth/register,/api/user/auth/send-code,/api/user/auth/reset-password,/*/v3/api-docs/**,/*/swagger-ui/**,/*/doc.html,/*/webjars/**
+
+# 日志配置
+logging:
+  level:
+    com.bucher: debug
+    org.springframework.cloud.gateway: debug

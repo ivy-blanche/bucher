@@ -1,0 +1,52 @@
+server:
+  port: 8103
+
+spring:
+  application:
+    name: question-service
+  profiles:
+    active: local
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
+      server-addr: ${nacos.server-addr:127.0.0.1:8848}
+      discovery:
+        enabled: true
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${mysql.host:localhost}:${mysql.port:3306}/bucher_user?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${mysql.username:root}
+    password: ${mysql.password:123456}
+  data:
+    redis:
+      host: ${redis.host:localhost}
+      port: ${redis.port:6379}
+      database: 3
+
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+logging:
+  level:
+    com.bucher: debug

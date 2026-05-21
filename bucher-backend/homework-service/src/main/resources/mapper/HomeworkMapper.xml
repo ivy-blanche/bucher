@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bucher.homework.mapper.HomeworkMapper">
+
+    <!-- 教师作业列表查询 -->
+    <select id="selectTeacherHomeworkList" resultType="com.bucher.homework.vo.HomeworkListVO">
+        SELECT
+            h.id,
+            h.title,
+            h.course_name AS courseName,
+            h.deadline,
+            h.status,
+            h.grading_status AS gradingStatus,
+            COUNT(s.id) AS submitCount,
+            SUM(CASE WHEN s.grade_status = 1 THEN 1 ELSE 0 END) AS gradedCount
+        FROM homework h
+        LEFT JOIN homework_submission s ON h.id = s.homework_id AND s.is_deleted = 0
+        <where>
+            h.teacher_id = #{teacherId}
+            AND h.is_deleted = 0
+            <if test="filter == 'collecting'">
+                AND h.status = 1
+                AND h.deadline &gt; NOW()
+            </if>
+            <if test="filter == 'ended'">
+                AND (h.status = 2 OR <![CDATA[h.deadline <= NOW()]]>)
+            </if>
+            <if test="filter == 'pending'">
+                AND h.grading_status = 1
+            </if>
+        </where>
+        GROUP BY h.id
+        ORDER BY h.create_time DESC
+    </select>
+
+    <!-- 学生端作业列表查询 -->
+    <select id="selectStudentHomeworkList" resultType="com.bucher.homework.vo.StudentHomeworkVO">
+        SELECT DISTINCT
+            h.id,
+            h.title,
+            h.deadline,
+            CASE
+                WHEN hs.status = 2 THEN 2
+                WHEN hs.status = 1 THEN 1
+                WHEN h.deadline &lt; NOW() THEN 3
+                ELSE 0
+            END AS status
+        FROM homework h
+        INNER JOIN homework_class hc ON h.id = hc.homework_id
+        LEFT JOIN homework_submission hs ON h.id = hs.homework_id AND hs.student_id = #{studentId}
+        <where>
+            h.course_id = #{courseId}
+            AND hc.course_class_id IN
+            <foreach collection="classIds" item="classId" separator="," open="(" close=")">
+                #{classId}
+            </foreach>
+            AND h.status IN (1, 2)
+            AND h.is_deleted = 0
+        </where>
+        ORDER BY h.deadline ASC
+    </select>
+
+</mapper>
