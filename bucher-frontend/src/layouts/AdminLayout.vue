@@ -17,6 +17,7 @@ const menuItems: MenuItem[] = [
   { key: 'teachers', label: '教师管理' },
   { key: 'learning-status', label: '学习情况' },
   { key: 'settings', label: '机构设置' },
+  { key: 'ai-config', label: 'AI 配置' },
 ]
 
 const activeTab = computed(() => {
@@ -26,6 +27,7 @@ const activeTab = computed(() => {
   if (path.includes('/admin/teachers')) return 'teachers'
   if (path.includes('/admin/learning-status')) return 'learning-status'
   if (path.includes('/admin/settings')) return 'settings'
+  if (path.includes('/admin/ai-config')) return 'ai-config'
   return 'departments'
 })
 
@@ -35,6 +37,7 @@ const routeMap: Record<string, string> = {
   teachers: '/admin/teachers',
   'learning-status': '/admin/learning-status',
   settings: '/admin/settings',
+  'ai-config': '/admin/ai-config',
 }
 
 function onMenuSelect(key: string) {
@@ -88,6 +91,13 @@ function onMenuSelect(key: string) {
               <svg v-if="item.key === 'settings'" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
                 <circle cx="10" cy="10" r="3" />
                 <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.93 4.93l1.41 1.41M13.66 13.66l1.41 1.41M4.93 15.07l1.41-1.41M13.66 6.34l1.41-1.41" />
+              </svg>
+              <!-- AI 配置 — 大脑/芯片图标 -->
+              <svg v-if="item.key === 'ai-config'" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M6 3a3 3 0 00-3 3v2a3 3 0 003 3h1v6l3-3h4a3 3 0 003-3V6a3 3 0 00-3-3H6z" />
+                <circle cx="7.5" cy="8.5" r="1" fill="currentColor" />
+                <circle cx="10" cy="8.5" r="1" fill="currentColor" />
+                <circle cx="12.5" cy="8.5" r="1" fill="currentColor" />
               </svg>
             </div>
             <span class="nav-label">{{ item.label }}</span>

@@ -1,0 +1,81 @@
+server:
+  port: 8108
+
+spring:
+  application:
+    name: ai-service
+  profiles:
+    active: local
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
+      server-addr: ${nacos.server-addr:127.0.0.1:8848}
+      discovery:
+        enabled: true
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${mysql.host:localhost}:${mysql.port:3306}/bucher_user?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${mysql.username:root}
+    password: ${mysql.password:123456}
+  data:
+    redis:
+      host: ${redis.host:localhost}
+      port: ${redis.port:6379}
+      database: 8
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  global-config:
+    db-config:
+      id-type: ASSIGN_ID
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# Knife4j API 文档配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# PostgreSQL + PGVector（向量存储专用）
+pgvector:
+  host: ${PG_HOST:localhost}
+  port: ${PG_PORT:5432}
+  database: ${PG_DB:bucher_vector}
+  username: ${PG_USERNAME:postgres}
+  password: ${PG_PASSWORD:123456}
+  embedding-table: ai_embeddings
+  dimension: 1024
+
+# MinIO（知识库文件存储）
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+  bucket-name: ai-bucket
+
+# 日志配置
+logging:
+  level:
+    com.bucher: debug

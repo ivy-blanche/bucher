@@ -7,10 +7,26 @@ import { getHomeworkDoData, saveAnswer, submitHomework, runCode } from '@/api/ho
 import type { RunCodeResponse } from '@/api/homework'
 import OJEditor from '@/components/OJEditor.vue'
 import type { Problem } from '@/components/OJEditor.vue'
+import { useAIStore } from '@/stores/ai'
+import AIChat from '@/components/AIChat.vue'
 
 const route = useRoute()
 const router = useRouter()
 const homeworkId = route.params.id as string
+const aiStore = useAIStore()
+
+const aiSidebarVisible = ref(false)
+
+const courseIdFromQuery = computed(() => route.query.courseId as string || '')
+const courseNameFromQuery = computed(() => route.query.courseName as string || '')
+
+function toggleAISidebar() {
+  aiSidebarVisible.value = !aiSidebarVisible.value
+  if (aiSidebarVisible.value && courseIdFromQuery.value) {
+    aiStore.initCourse(courseIdFromQuery.value, courseNameFromQuery.value)
+    aiStore.setFullMode()
+  }
+}
 
 // ==================== 页面数据 ====================
 interface OptionItem {
@@ -447,6 +463,19 @@ onMounted(() => {
             <div class="sidebar-footer">
               <div v-if="homework.submitted" class="sidebar-status submitted-status">已提交</div>
               <div v-else-if="isExpired" class="sidebar-status expired-status">已截止</div>
+              <button
+                v-if="courseIdFromQuery"
+                class="ai-sidebar-btn"
+                :class="{ active: aiSidebarVisible }"
+                @click="toggleAISidebar"
+              >
+                <svg viewBox="0 0 20 20" width="16" height="16">
+                  <circle cx="10" cy="10" r="8"/>
+                  <path d="M10 5v5l3 1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M6 12.5c0 1.2 1.5 2.5 4 2.5s4-1.3 4-2.5" stroke-linecap="round"/>
+                </svg>
+                <span>{{ aiSidebarVisible ? '关闭 AI' : 'AI 助教' }}</span>
+              </button>
             </div>
           </template>
         </aside>
@@ -629,6 +658,16 @@ onMounted(() => {
             </div>
           </template>
         </main>
+
+        <!-- AI 助教侧边栏 -->
+        <AIChat
+          v-if="courseIdFromQuery"
+          mode="embedded"
+          :visible="aiSidebarVisible"
+          :course-id="courseIdFromQuery"
+          :course-name="courseNameFromQuery"
+          @update:visible="aiSidebarVisible = $event"
+        />
       </div>
     </template>
   </MainLayout>
@@ -814,6 +853,9 @@ onMounted(() => {
 .sidebar-footer {
   padding: 12px 16px;
   border-top: 1px solid rgba(0, 102, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .sidebar-status {
@@ -822,6 +864,36 @@ onMounted(() => {
   font-size: 13px;
   font-weight: 600;
   border-radius: 10px;
+}
+
+.ai-sidebar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 0;
+  border: 1px solid rgba(0, 102, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.5);
+  color: #0066ff;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-sidebar-btn:hover {
+  background: rgba(0, 102, 255, 0.06);
+  border-color: rgba(0, 102, 255, 0.25);
+}
+
+.ai-sidebar-btn.active {
+  background: linear-gradient(135deg, #0066ff, #00d4ff);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 3px 10px rgba(0, 102, 255, 0.2);
 }
 
 .sidebar-status.submitted-status {

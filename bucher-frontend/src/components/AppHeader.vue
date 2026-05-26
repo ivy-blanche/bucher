@@ -6,10 +6,12 @@ import { User, Setting, SwitchButton, ArrowLeft, Message } from '@element-plus/i
 import { useUserStore } from '@/stores/user'
 import { logout } from '@/api/user'
 import { getUnreadCount } from '@/api/message'
+import { useAIStore } from '@/stores/ai'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const aiStore = useAIStore()
 
 // 用户信息
 const userName = computed(() => userStore.userInfo?.realName || '用户')
@@ -41,6 +43,7 @@ watch(
 
 // 是否在课程详情页
 const isCourseDetail = computed(() => route.name === 'courseDetail')
+const courseId = computed(() => route.params.id as string || '')
 
 // 课程信息（从 query 参数获取）
 const courseName = computed(() => (route.query.name as string) || '未知课程')
@@ -90,6 +93,21 @@ const handleMenuClick = async (key: string) => {
         router.push('/login')
       }
       break
+  }
+}
+
+// 跳转 AI 助手
+const goToAI = () => {
+  const cid = courseId.value || aiStore.courseId
+  if (cid) {
+    router.push({
+      name: 'courseDetail',
+      params: { id: cid },
+      query: { tab: 'ai', name: courseName.value || aiStore.courseName },
+    })
+  } else {
+    router.push({ name: 'courseList' })
+    ElMessage.info('请先进入课程')
   }
 }
 
@@ -179,6 +197,16 @@ const goBackToCourses = () => {
 
       <!-- 右侧用户区域 -->
       <div class="user-section">
+        <!-- AI 助手（仅学生端显示） -->
+        <div v-if="isStudent" class="message-btn ai-btn" @click="goToAI" title="AI 助教">
+          <el-icon :size="22">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="22" height="22">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 6v6l4 2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M8 14c0 2 1.5 3.5 4 3.5s4-1.5 4-3.5" stroke-linecap="round" />
+            </svg>
+          </el-icon>
+        </div>
         <!-- 消息图标（仅学生端显示） -->
         <div v-if="isStudent" class="message-btn" @click="router.push('/messages')">
           <el-badge :value="unreadCount" :hidden="unreadCount === 0" class="message-badge">

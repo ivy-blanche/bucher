@@ -68,7 +68,21 @@ public enum ResultCodeEnum {
 
     // 作业相关 4xxx
     HOMEWORK_NOT_FOUND(4001, "作业不存在"),
-    HOMEWORK_EXPIRED(4002, "作业已截止");
+    HOMEWORK_EXPIRED(4002, "作业已截止"),
+
+    // AI 相关 5xxx
+    AI_CONFIG_NOT_FOUND(5001, "AI 配置不存在"),
+    AI_CONFIG_ALREADY_EXISTS(5002, "AI 配置已存在"),
+    AI_PERMISSION_ALREADY_EXISTS(5003, "该教师已被授权"),
+    AI_PERMISSION_NOT_FOUND(5004, "该教师未获得 AI 权限"),
+    AI_COURSE_NOT_AVAILABLE(5005, "您所在机构未开启此功能，请联系管理员"),
+
+    // AI 知识库 5006-5010
+    KNOWLEDGE_DOCUMENT_NOT_FOUND(5006, "知识库文档不存在"),
+    KNOWLEDGE_FILE_TYPE_NOT_SUPPORTED(5007, "不支持的文件类型，支持 pdf/docx/pptx/txt/md/html"),
+    KNOWLEDGE_DOCUMENT_PROCESSING(5008, "文档正在向量化处理中"),
+    AI_COURSE_NOT_ENABLED(5009, "该课程未启用 AI 功能"),
+    AI_UPLOAD_SIZE_EXCEEDED(5010, "文件大小超过限制（最大20MB）");
 
     private final Integer code;
     private final String message;

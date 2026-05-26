@@ -310,3 +310,158 @@ ALTER TABLE `homework_answer_judge`
 -- 2026-05-21: 更新 homework_answer_judge.status COMMENT 与实际状态值对齐
 ALTER TABLE `homework_answer_judge`
     MODIFY COLUMN `status` TINYINT NOT NULL DEFAULT 0 COMMENT '判题状态: 0=待判题, 1=判题中, 2=已完成, 3=失败';
+
+-- 2026-05-22: 新建 AI 接口配置表
+CREATE TABLE IF NOT EXISTS `ai_config` (
+    `id` BIGINT NOT NULL COMMENT '主键（雪花ID）',
+    `project_name` VARCHAR(100) NULL COMMENT '项目名称，用于标识该 key 所属项目',
+    `provider` VARCHAR(50) NOT NULL COMMENT '厂商：DEEPSEEK / OPENAI / QIANFAN 等',
+    `api_key` VARCHAR(512) NOT NULL COMMENT 'API 密钥',
+    `api_endpoint` VARCHAR(255) NOT NULL COMMENT 'API 端点 URL',
+    `model_name` VARCHAR(100) NOT NULL COMMENT '模型名称，如 deepseek-chat',
+    `max_tokens` INT NOT NULL DEFAULT 4096 COMMENT '最大 token 数',
+    `temperature` DECIMAL(3,2) NOT NULL DEFAULT 0.7 COMMENT '温度参数 0-2',
+    `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态：1=启用，0=停用',
+    `create_time` DATETIME NOT NULL COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL COMMENT '更新时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 接口配置表';
+
+-- 2026-05-22: ai_config 添加 embedding_model 字段
+ALTER TABLE `ai_config`
+    ADD COLUMN `embedding_model` VARCHAR(100) NOT NULL DEFAULT 'text-embedding-ada-002' COMMENT 'Embedding 模型名称，如 deepseek-embedding' AFTER `model_name`,
+    ADD COLUMN `embedding_api_key` VARCHAR(512) NULL COMMENT 'Embedding API 密钥（为空则复用 api_key）' AFTER `embedding_model`,
+    ADD COLUMN `embedding_api_endpoint` VARCHAR(255) NULL COMMENT 'Embedding API 端点 URL（为空则复用 api_endpoint）' AFTER `embedding_api_key`;
+CREATE TABLE IF NOT EXISTS `ai_teacher_permission` (
+    `id` BIGINT NOT NULL COMMENT '主键（雪花ID）',
+    `teacher_id` BIGINT NOT NULL COMMENT '教师用户 ID',
+    `status` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '状态：1=已授权，0=已撤销',
+    `granted_by` BIGINT NOT NULL COMMENT '授权操作的管理员 ID',
+    `create_time` DATETIME NOT NULL COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL COMMENT '更新时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `uk_teacher_id` (`teacher_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='教师 AI 使用权限表';
+
+-- 2026-05-22: 新建课程 AI 启用状态表
+CREATE TABLE IF NOT EXISTS `ai_course_config` (
+    `id` BIGINT NOT NULL COMMENT '主键（雪花ID）',
+    `course_id` BIGINT NOT NULL COMMENT '课程 ID',
+    `teacher_id` BIGINT NOT NULL COMMENT '操作教师 ID',
+    `status` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态：1=已启用，0=未启用',
+    `create_time` DATETIME NOT NULL COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL COMMENT '更新时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    UNIQUE INDEX `uk_course_id` (`course_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='课程 AI 启用状态表';
+
+-- 2026-05-22: 新建 AI 知识库文档表
+CREATE TABLE IF NOT EXISTS `ai_knowledge_document` (
+    `id` BIGINT NOT NULL COMMENT '主键（雪花ID）',
+    `course_id` BIGINT NOT NULL COMMENT '课程ID，0=全局文档（管理员上传）',
+    `teacher_id` BIGINT NOT NULL COMMENT '上传教师ID',
+    `file_name` VARCHAR(255) NOT NULL COMMENT '原始文件名',
+    `file_size` BIGINT NOT NULL COMMENT '文件大小（字节）',
+    `file_type` VARCHAR(100) NULL COMMENT 'MIME 类型',
+    `file_ext` VARCHAR(20) NULL COMMENT '文件扩展名',
+    `object_name` VARCHAR(512) NOT NULL COMMENT 'MinIO 对象路径',
+    `bucket_name` VARCHAR(100) NOT NULL COMMENT 'MinIO bucket',
+    `status` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '状态：0=待处理，1=已向量化，2=处理失败',
+    `chunk_count` INT NOT NULL DEFAULT 0 COMMENT '向量化后的分块数',
+    `error_msg` VARCHAR(500) NULL COMMENT '处理失败原因',
+    `create_time` DATETIME NOT NULL COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL COMMENT '更新时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    INDEX `idx_course_id` (`course_id`),
+    INDEX `idx_teacher_id` (`teacher_id`),
+    INDEX `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 知识库文档表';
+
+-- 2026-05-25: exam 表添加新字段（考试发布配置）
+ALTER TABLE `exam`
+    ADD COLUMN `course_name` VARCHAR(200) NULL COMMENT '课程名称' AFTER `course_id`,
+    ADD COLUMN `grading_status` TINYINT NOT NULL DEFAULT 0 COMMENT '批改状态: 0=无需批改/全部已批, 1=待批改' AFTER `status`,
+    ADD COLUMN `early_submit_minutes` INT NOT NULL DEFAULT 0 COMMENT '最早交卷时间(分钟)，开考后多久可以交卷' AFTER `pass_score`,
+    ADD COLUMN `late_ban_minutes` INT NOT NULL DEFAULT 15 COMMENT '最晚入场时间(分钟)，开考后多久禁止进入' AFTER `early_submit_minutes`,
+    ADD COLUMN `auto_submit` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否自动提交: 1=超时自动提交, 0=不自动提交' AFTER `late_ban_minutes`;
+
+-- 2026-05-25: 新建考试教学班关联表（支持多教学班发布）
+CREATE TABLE IF NOT EXISTS `exam_class` (
+    `id` BIGINT NOT NULL COMMENT '主键（雪花ID）',
+    `exam_id` BIGINT NOT NULL COMMENT '考试ID',
+    `course_class_id` BIGINT NOT NULL COMMENT '教学班ID',
+    `create_time` DATETIME NOT NULL COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_exam_id` (`exam_id`),
+    INDEX `idx_course_class_id` (`course_class_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考试教学班关联';
+
+-- 2026-05-25: 新建考试提交记录表
+CREATE TABLE IF NOT EXISTS `exam_submission` (
+    `id` BIGINT NOT NULL COMMENT '主键',
+    `exam_id` BIGINT NOT NULL COMMENT '考试ID',
+    `student_id` BIGINT NOT NULL COMMENT '学生ID',
+    `score` INT NULL COMMENT '得分',
+    `teacher_comment` TEXT NULL COMMENT '教师评语',
+    `submit_time` DATETIME NULL COMMENT '提交时间',
+    `grade_time` DATETIME NULL COMMENT '批改时间',
+    `grade_status` TINYINT NOT NULL DEFAULT 0 COMMENT '批改状态: 0=未批改, 1=已批改',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '提交状态: 0=未提交, 1=已提交, 2=已批改',
+    `create_time` DATETIME NOT NULL COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL COMMENT '更新时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    INDEX `idx_exam_id` (`exam_id`),
+    INDEX `idx_student_id` (`student_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考试提交记录';
+
+-- 2026-05-25: 新建考试作答记录表
+CREATE TABLE IF NOT EXISTS `exam_answer` (
+    `id` BIGINT NOT NULL COMMENT '主键（雪花ID）',
+    `exam_id` BIGINT NOT NULL COMMENT '考试ID',
+    `student_id` BIGINT NOT NULL COMMENT '学生ID',
+    `question_id` BIGINT NOT NULL COMMENT '题目ID',
+    `answer` TEXT NULL COMMENT '学生答案',
+    `score` INT NULL COMMENT '本题得分（客观题自动评分）',
+    `is_correct` TINYINT(1) NULL COMMENT '客观题是否正确：0=错误, 1=正确',
+    `create_time` DATETIME NOT NULL COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL COMMENT '更新时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    INDEX `idx_exam_id` (`exam_id`),
+    INDEX `idx_student_id` (`student_id`),
+    INDEX `idx_question_id` (`question_id`),
+    UNIQUE INDEX `uk_exam_student_question` (`exam_id`, `student_id`, `question_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='考试作答记录';
+
+-- 2026-05-22: 新建 AI 对话记录表
+CREATE TABLE IF NOT EXISTS `ai_conversation` (
+    `id` BIGINT NOT NULL COMMENT '主键（雪花ID）',
+    `course_id` BIGINT NOT NULL COMMENT '课程ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `role` VARCHAR(20) NOT NULL COMMENT '角色：USER / ASSISTANT',
+    `content` TEXT NOT NULL COMMENT '消息内容',
+    `create_time` DATETIME NOT NULL COMMENT '创建时间',
+    `is_deleted` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    INDEX `idx_course_user_time` (`course_id`, `user_id`, `create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI 对话记录表';
+
+-- =====================================================
+-- PostgreSQL + pgvector（AI 向量存储）
+-- 适用数据库：PostgreSQL 16+ + pgvector 0.8+
+-- 操作步骤：
+--   1. psql -U postgres -c "CREATE DATABASE bucher_vector;"
+--   2. psql -U postgres -d bucher_vector -c "CREATE EXTENSION IF NOT EXISTS vector;"
+--   3. 向量表 ai_embeddings 由 PgVectorEmbeddingStore 自动创建（createTable=true）
+-- =====================================================
+-- 创建向量数据库（在 psql 中执行）
+-- CREATE DATABASE bucher_vector;
+-- 连接到 bucher_vector 数据库后启用 pgvector 扩展
+-- \c bucher_vector
+-- CREATE EXTENSION IF NOT EXISTS vector;

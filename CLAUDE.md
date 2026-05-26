@@ -106,7 +106,7 @@ Spring Cloud 微服务，服务列表：
 | gateway-service  | 路由、JWT 校验、Sentinel 限流                    |
 | user-service     | 用户、角色、院系、行政班级                       |
 | course-service   | 课程、课程班级、成员、资料、视频                 |
-| question-service | 题库、题目（单选/多选/填空/简答）                |
+| question-service | 题库、题目（单选/多选/填空/简答/编程）           |
 | exam-service     | 考试、组卷、作答、自动评分                       |
 | homework-service | 作业、提交、附件（docx/pdf/zip）                 |
 | grade-service    | 阅卷、成绩汇总                                   |
@@ -186,7 +186,6 @@ Spring Cloud 微服务，服务列表：
 
 ## 文件存储
 
-- 所有文件存 MinIO，禁止存本地磁盘
 - MinIO bucket 按服务划分：course-bucket / homework-bucket / ai-bucket
 - 视频用 Range 请求流式传输，禁止一次性加载
 

@@ -17,6 +17,8 @@ public class Exam {
 
     private Long courseId;
 
+    private String courseName;
+
     private Long teacherId;
 
     private Long courseClassId;
@@ -35,11 +37,19 @@ public class Exam {
 
     private Integer passScore;
 
+    private Integer earlySubmitMinutes;
+
+    private Integer lateBanMinutes;
+
+    private Integer autoSubmit;
+
     private LocalDateTime startTime;
 
     private LocalDateTime endTime;
 
     private Integer status;
+
+    private Integer gradingStatus;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

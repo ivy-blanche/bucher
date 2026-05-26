@@ -66,6 +66,11 @@ const router = createRouter({
       component: () => import('@/views/admin/InstitutionSettings.vue')
     },
     {
+      path: '/admin/ai-config',
+      name: 'adminAiConfig',
+      component: () => import('@/views/admin/AiConfig.vue')
+    },
+    {
       path: '/teacher',
       redirect: '/teacher/courses'
     },
@@ -95,6 +100,16 @@ const router = createRouter({
       component: () => import('@/views/teacher/ExamManage.vue')
     },
     {
+      path: '/teacher/exams/assign',
+      name: 'teacherExamAssign',
+      component: () => import('@/views/teacher/ExamAssign.vue')
+    },
+    {
+      path: '/exam/:id',
+      name: 'examDo',
+      component: () => import('@/views/exam/do.vue')
+    },
+    {
       path: '/teacher/question-bank',
       name: 'teacherQuestionBank',
       component: () => import('@/views/teacher/QuestionBank.vue')
@@ -113,6 +128,11 @@ const router = createRouter({
       path: '/homework/:id',
       name: 'homeworkDo',
       component: () => import('@/views/homework/do.vue')
+    },
+    {
+      path: '/courses/:id/ai',
+      name: 'aiChat',
+      component: () => import('@/views/ai/index.vue')
     },
     {
       path: '/messages',

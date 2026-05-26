@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import TeacherLayout from '@/layouts/TeacherLayout.vue'
 import { createClass, uploadMaterial, getMaterialList, deleteCourseMaterial, downloadMaterial, batchDownloadMaterials, type ClassInfo, type MaterialInfo } from '@/api/course'
+import { getCourseAiStatus, setCourseAiStatus, getKnowledgeDocuments, uploadKnowledgeDocument, deleteKnowledgeDocument, type KnowledgeDocument } from '@/api/ai'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,6 +28,7 @@ const tabs = [
   { key: 'classes', label: '班级管理' },
   { key: 'materials', label: '课程资料' },
   { key: 'members', label: '课程成员' },
+  { key: 'ai', label: 'AI 知识库' },
   { key: 'settings', label: '课程信息' },
 ]
 const activeTab = ref('classes')
@@ -319,8 +321,8 @@ function goBack() {
 
 // ==================== 初始化加载 ====================
 onMounted(async () => {
-  // 加载资料列表（切换到此页面时重新获取）
   await loadMaterials()
+  loadAiStatus()
 })
 
 const materialsLoading = ref(false)
@@ -346,6 +348,92 @@ async function loadMaterials() {
     materialsLoading.value = false
   }
 }
+
+// ==================== AI 配置 & 知识库 ====================
+const aiEnabled = ref(false)
+const aiLoading = ref(false)
+const aiDocs = ref<KnowledgeDocument[]>([])
+const aiDocsLoading = ref(false)
+const aiUploading = ref(false)
+const aiFileInput = ref<HTMLInputElement | null>(null)
+
+async function loadAiStatus() {
+  try {
+    const res = await getCourseAiStatus(courseId.value)
+    aiEnabled.value = res === true
+  } catch { /* 静默 */ }
+}
+
+async function handleAiToggle(val: boolean) {
+  try {
+    await setCourseAiStatus(courseId.value, val)
+    ElMessage.success(val ? 'AI 助教已开启' : 'AI 助教已关闭')
+  } catch {
+    aiEnabled.value = !val
+  }
+}
+
+async function loadAiKnowledge() {
+  aiDocsLoading.value = true
+  try {
+    const res = await getKnowledgeDocuments(courseId.value)
+    aiDocs.value = res.records || []
+  } catch {
+    aiDocs.value = []
+  } finally {
+    aiDocsLoading.value = false
+  }
+}
+
+function triggerAiUpload() {
+  aiFileInput.value?.click()
+}
+
+async function handleAiFileSelect(e: Event) {
+  const files = (e.target as HTMLInputElement).files
+  if (!files || files.length === 0) return
+  aiUploading.value = true
+  try {
+    const doc = await uploadKnowledgeDocument(courseId.value, files[0])
+    aiDocs.value.unshift(doc)
+    ElMessage.success('上传成功，文档正在向量化处理')
+  } catch {
+    // 拦截器已处理
+  } finally {
+    aiUploading.value = false
+    ;(e.target as HTMLInputElement).value = ''
+  }
+}
+
+async function handleDeleteAiDoc(doc: KnowledgeDocument) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除「${doc.fileName}」？删除后 AI 将无法引用该文档内容。`,
+      '删除确认',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch { return }
+  try {
+    await deleteKnowledgeDocument(courseId.value, doc.id)
+    aiDocs.value = aiDocs.value.filter(d => d.id !== doc.id)
+    ElMessage.success('已删除')
+  } catch { /* 拦截器已处理 */ }
+}
+
+import { watch } from 'vue'
+
+const loadFunctions: Record<string, () => void> = {
+  materials: () => {
+    if (materials.value.length === 0) loadMaterials()
+  },
+  ai: () => {
+    if (aiDocs.value.length === 0) loadAiKnowledge()
+  },
+}
+
+watch(activeTab, (tab) => {
+  loadFunctions[tab]?.()
+})
 </script>
 
 <template>
@@ -690,6 +778,61 @@ async function loadMaterials() {
           </div>
         </div>
 
+        <!-- ==================== AI 知识库 ==================== -->
+        <div v-if="activeTab === 'ai'" class="section">
+          <div class="section-header">
+            <h2 class="section-title">AI 知识库文档</h2>
+            <div class="header-actions">
+              <span class="materials-tip">支持 pdf/docx/pptx/txt/md，单文件 ≤20MB</span>
+              <button class="primary-btn" :disabled="aiUploading" @click="triggerAiUpload">
+                <svg viewBox="0 0 16 16" width="14" height="14">
+                  <path d="M8 2v9M4 7l4-5 4 5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                  <line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span>{{ aiUploading ? '上传中...' : '上传文档' }}</span>
+              </button>
+            </div>
+            <input ref="aiFileInput" type="file" style="display:none" accept=".pdf,.docx,.pptx,.txt,.md,.html" @change="handleAiFileSelect" />
+          </div>
+
+          <div v-if="aiDocsLoading" class="empty-section">
+            <p class="empty-text">加载中...</p>
+          </div>
+
+          <div v-else-if="aiDocs.length === 0" class="empty-section">
+            <svg viewBox="0 0 80 80" width="80" height="80" class="empty-icon">
+              <circle cx="40" cy="30" r="12" fill="none" stroke="#b0c8e0" stroke-width="2"/>
+              <path d="M20 60c0-8 8-14 20-14s20 6 20 14" fill="none" stroke="#b0c8e0" stroke-width="2"/>
+              <path d="M50 22l8 8-8 8" fill="none" stroke="#0066ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p class="empty-text">暂无知识库文档</p>
+            <p class="empty-hint">上传课程资料作为 AI 助教的知识来源，学生提问时将基于这些内容回答</p>
+          </div>
+
+          <div v-else class="material-grid">
+            <div v-for="doc in aiDocs" :key="doc.id" class="material-card">
+              <div class="card-actions">
+                <button class="card-delete" @click="handleDeleteAiDoc(doc)" title="删除">
+                  <svg viewBox="0 0 16 16" width="12" height="12">
+                    <line x1="4" y1="4" x2="12" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    <line x1="12" y1="4" x2="4" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="card-icon card-icon-ai">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M4 6h16M4 12h16M4 18h12"/>
+                </svg>
+              </div>
+              <span class="card-name" :title="doc.fileName">{{ doc.fileName }}</span>
+              <span class="card-meta">{{ formatSize(doc.fileSize) }}</span>
+              <span v-if="doc.status === 0" class="status-badge status-processing">处理中</span>
+              <span v-else-if="doc.status === 1" class="status-badge status-done">已就绪 ({{ doc.chunkCount }}块)</span>
+              <span v-else-if="doc.status === 2" class="status-badge status-fail">失败</span>
+            </div>
+          </div>
+        </div>
+
         <!-- ==================== 课程信息 ==================== -->
         <div v-if="activeTab === 'settings'" class="section">
           <div class="section-header">
@@ -722,6 +865,19 @@ async function loadMaterials() {
             <div class="info-row">
               <span class="info-label">授课教师</span>
               <span class="info-value">{{ course.teacherName }}</span>
+            </div>
+            <div class="info-divider"></div>
+            <div class="info-row">
+              <span class="info-label">AI 助教</span>
+              <div class="info-value ai-toggle-row">
+                <el-switch
+                  v-model="aiEnabled"
+                  active-text="已开启"
+                  inactive-text="已关闭"
+                  @change="handleAiToggle"
+                />
+                <span class="ai-toggle-hint">开启后学生可在课程详情页使用 AI 助教</span>
+              </div>
             </div>
             <div class="info-divider"></div>
             <div class="info-row info-row-desc">
@@ -1791,5 +1947,31 @@ async function loadMaterials() {
     font-size: 24px;
     letter-spacing: 4px;
   }
+}
+
+/* ===== AI 知识库 ===== */
+.card-icon-ai {
+  background: linear-gradient(135deg, rgba(0, 102, 255, 0.08), rgba(0, 212, 255, 0.08));
+  color: #0066ff;
+}
+
+.status-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.status-processing { background: rgba(255, 152, 0, 0.1); color: #f57c00; }
+.status-done { background: rgba(76, 175, 80, 0.1); color: #388e3c; }
+.status-fail { background: rgba(229, 57, 53, 0.1); color: #c62828; }
+
+.ai-toggle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ai-toggle-hint {
+  font-size: 12px;
+  color: #b0c8e0;
 }
 </style>

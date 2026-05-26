@@ -1,5 +1,16 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useAIStore } from '@/stores/ai'
 import AppHeader from '@/components/AppHeader.vue'
+import AIChat from '@/components/AIChat.vue'
+import AIChatToggle from '@/components/AIChatToggle.vue'
+
+const route = useRoute()
+const aiStore = useAIStore()
+
+const currentCourseId = computed(() => route.params.id as string || '')
+const currentCourseName = computed(() => (route.query.name as string) || '')
 </script>
 
 <template>
@@ -7,10 +18,23 @@ import AppHeader from '@/components/AppHeader.vue'
     <!-- 顶部导航栏 -->
     <AppHeader />
 
-    <!-- 主内容区域 -->
-    <main class="main-content">
-      <slot />
-    </main>
+    <!-- 主内容区域（inline 布局，AI 侧边栏推动内容） -->
+    <div class="main-body">
+      <main class="main-content">
+        <slot />
+      </main>
+
+      <AIChat
+        mode="embedded"
+        :visible="aiStore.visible"
+        :course-id="currentCourseId"
+        :course-name="currentCourseName"
+        @update:visible="aiStore.closeOverlay()"
+      />
+    </div>
+
+    <!-- AI 助手浮动按钮 -->
+    <AIChatToggle />
   </div>
 </template>
 
@@ -24,8 +48,14 @@ import AppHeader from '@/components/AppHeader.vue'
   background-attachment: fixed;
 }
 
-.main-content {
-  padding-top: 64px; /* 为固定的 header 留出空间 */
+.main-body {
+  display: flex;
+  padding-top: 64px;
   min-height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  min-width: 0;
 }
 </style>

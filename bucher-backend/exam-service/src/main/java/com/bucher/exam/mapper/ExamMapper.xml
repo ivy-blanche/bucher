@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.bucher.exam.mapper.ExamMapper">
+
+    <resultMap id="examListVOMap" type="com.bucher.exam.vo.ExamListVO">
+        <id property="id" column="id"/>
+        <result property="title" column="title"/>
+        <result property="courseName" column="course_name"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="duration" column="duration"/>
+        <result property="totalScore" column="total_score"/>
+        <result property="status" column="status"/>
+    </resultMap>
+
+    <select id="selectTeacherExamList" resultMap="examListVOMap">
+        SELECT e.id, e.title, e.course_name, e.start_time, e.end_time,
+               e.duration, e.total_score, e.status
+        FROM exam e
+        WHERE e.teacher_id = #{teacherId}
+          AND e.is_deleted = 0
+        <if test="filter != null and filter == '1'">
+            AND e.status = 1
+        </if>
+        <if test="filter != null and filter == '2'">
+            AND e.status = 2
+        </if>
+        ORDER BY e.create_time DESC
+    </select>
+
+    <select id="selectStudentExamList" resultType="com.bucher.exam.vo.StudentExamVO">
+        SELECT
+            e.id,
+            e.title,
+            e.start_time,
+            e.end_time,
+            e.duration,
+            CASE
+                WHEN e.start_time > NOW() THEN 0
+                WHEN es.submit_time IS NOT NULL THEN 2
+                WHEN e.end_time IS NOT NULL AND e.end_time <![CDATA[<=]]> NOW() THEN 3
+                ELSE 1
+            END AS status
+        FROM exam e
+        INNER JOIN exam_class ec ON ec.exam_id = e.id
+            AND ec.course_class_id IN
+            <foreach collection="classIds" item="cid" open="(" separator="," close=")">
+                #{cid}
+            </foreach>
+        LEFT JOIN exam_submission es ON es.exam_id = e.id AND es.student_id = #{studentId}
+        WHERE e.is_deleted = 0
+          AND e.status = 1
+          AND e.course_id = #{courseId}
+        ORDER BY e.start_time DESC
+    </select>
+
+    <select id="countSubmitByExamId" resultType="java.lang.Integer">
+        SELECT COUNT(*) FROM exam_submission
+        WHERE exam_id = #{examId} AND status = 1
+    </select>
+
+</mapper>

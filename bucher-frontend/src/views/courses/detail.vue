@@ -5,15 +5,22 @@ import { ElMessage } from 'element-plus'
 import CourseLayout from '@/layouts/CourseLayout.vue'
 import { getMaterialList, downloadMaterial, batchDownloadMaterials } from '@/api/course'
 import { getStudentHomeworkList } from '@/api/homework'
+import { getStudentExamList } from '@/api/exam'
+import { useAIStore } from '@/stores/ai'
+import AIChat from '@/components/AIChat.vue'
 
 const route = useRoute()
 const router = useRouter()
+const aiStore = useAIStore()
 
 const activeTab = computed(() => (route.query.tab as string) || 'chapters')
+const courseId = computed(() => route.params.id as string)
+const courseName = computed(() => route.query.name as string || '')
 
 const tabTitles: Record<string, string> = {
   chapters: '课程章节',
   homework: '作业',
+  exam: '考试',
   lab: '实验',
   material: '资料',
 }
@@ -188,7 +195,56 @@ function formatDeadline(dt: string): string {
 }
 
 function goDoHomework(id: number) {
-  router.push({ name: 'homeworkDo', params: { id } })
+  router.push({
+    name: 'homeworkDo',
+    params: { id },
+    query: { courseId: courseId.value, courseName: courseName.value },
+  })
+}
+
+// ==================== 考试列表 ====================
+interface ExamItem {
+  id: number
+  title: string
+  startTime: string
+  endTime: string
+  duration: number
+  status: number
+}
+
+const examList = ref<ExamItem[]>([])
+const examLoading = ref(false)
+
+async function loadExams() {
+  const courseId = route.params.id as string
+  if (!courseId) return
+  examLoading.value = true
+  try {
+    examList.value = await getStudentExamList(courseId)
+  } catch {
+    // 错误已由拦截器统一处理
+  } finally {
+    examLoading.value = false
+  }
+}
+
+function formatExamTime(dt: string): string {
+  return dt.replace('T', ' ').slice(0, 16)
+}
+
+const examStatusLabels: Record<number, { label: string; color: string; bg: string }> = {
+  0: { label: '未开始', color: '#ff9800', bg: 'rgba(255, 152, 0, 0.08)' },
+  1: { label: '进行中', color: '#0066ff', bg: 'rgba(0, 102, 255, 0.08)' },
+  2: { label: '已提交', color: '#00c853', bg: 'rgba(0, 200, 83, 0.08)' },
+  3: { label: '已结束', color: '#9e9e9e', bg: 'rgba(158, 158, 158, 0.08)' },
+}
+
+function goDoExam(id: number) {
+  router.push({
+    name: 'examDo',
+    params: { id },
+    query: { courseId: courseId.value, courseName: courseName.value },
+  })
 }
 
 // 切换到资料 tab 时加载
@@ -199,6 +255,13 @@ watch(activeTab, (tab) => {
   if (tab === 'homework' && homeworkList.value.length === 0) {
     loadHomework()
   }
+  if (tab === 'exam' && examList.value.length === 0) {
+    loadExams()
+  }
+  if (tab === 'ai') {
+    aiStore.initCourse(courseId.value, courseName.value)
+    aiStore.setFullMode()
+  }
 })
 
 onMounted(() => {
@@ -207,6 +270,13 @@ onMounted(() => {
   }
   if (activeTab.value === 'homework') {
     loadHomework()
+  }
+  if (activeTab.value === 'exam') {
+    loadExams()
+  }
+  if (activeTab.value === 'ai') {
+    aiStore.initCourse(courseId.value, courseName.value)
+    aiStore.setFullMode()
   }
 })
 </script>
@@ -429,6 +499,97 @@ onMounted(() => {
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ==================== 考试列表 ==================== -->
+      <div v-else-if="activeTab === 'exam'" class="section">
+        <div class="section-header">
+          <h2 class="section-title">课程考试</h2>
+        </div>
+
+        <div v-if="examLoading" class="loading-area">
+          <p>加载中...</p>
+        </div>
+
+        <div v-else-if="examList.length === 0" class="placeholder-area">
+          <div class="placeholder-card">
+            <div class="placeholder-icon">
+              <svg viewBox="0 0 64 64" class="ph-svg">
+                <defs>
+                  <linearGradient id="examGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#00d4ff;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#0066ff;stop-opacity:1" />
+                  </linearGradient>
+                </defs>
+                <rect x="12" y="8" width="40" height="48" rx="4" fill="none" stroke="url(#examGrad)" stroke-width="1.5"/>
+                <line x1="22" y1="22" x2="42" y2="22" stroke="url(#examGrad)" stroke-width="1" opacity="0.3"/>
+                <line x1="22" y1="30" x2="38" y2="30" stroke="url(#examGrad)" stroke-width="1" opacity="0.25"/>
+                <line x1="22" y1="38" x2="34" y2="38" stroke="url(#examGrad)" stroke-width="1" opacity="0.25"/>
+                <circle cx="38" cy="48" r="8" fill="none" stroke="url(#examGrad)" stroke-width="1.5"/>
+                <polyline points="35,48 37.5,50.5 42,45" stroke="url(#examGrad)" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <p class="placeholder-text">暂无考试</p>
+          </div>
+        </div>
+
+        <div v-else class="homework-list">
+          <div v-for="item in examList" :key="item.id" class="homework-item">
+            <div class="homework-info">
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span class="homework-title">{{ item.title }}</span>
+                <span
+                  class="exam-status-tag"
+                  :style="{
+                    color: examStatusLabels[item.status]?.color,
+                    background: examStatusLabels[item.status]?.bg,
+                  }"
+                >
+                  {{ examStatusLabels[item.status]?.label }}
+                </span>
+              </div>
+              <span class="homework-deadline">
+                <svg viewBox="0 0 16 16" width="13" height="13" class="deadline-icon">
+                  <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2" fill="none"/>
+                  <polyline points="8,4.5 8,8 11,9.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                {{ formatExamTime(item.startTime) }} ~ {{ formatExamTime(item.endTime) }}
+              </span>
+            </div>
+            <div class="homework-action">
+              <button
+                v-if="item.status === 0 || item.status === 1"
+                class="do-btn"
+                @click="goDoExam(item.id)"
+              >
+                {{ item.status === 0 ? '查看' : '去考试' }}
+                <svg viewBox="0 0 14 14" width="12" height="12" class="btn-arrow">
+                  <polyline points="5,3 9,7 5,11" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+              <button
+                v-else
+                class="review-btn"
+                @click="goDoExam(item.id)"
+              >
+                <svg viewBox="0 0 14 14" width="12" height="12">
+                  <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3" fill="none"/>
+                  <path d="M7 5v3M7 9.5v.01" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                </svg>
+                查看
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== AI 助教 ==================== -->
+      <div v-else-if="activeTab === 'ai'" class="ai-section">
+        <AIChat
+          mode="full"
+          :course-id="courseId"
+          :course-name="courseName"
+        />
       </div>
 
       <!-- ==================== 其他 Tab 占位 ==================== -->
@@ -842,5 +1003,30 @@ onMounted(() => {
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
+}
+
+.exam-status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+/* ====== AI 助教 ====== */
+.ai-section {
+  height: calc(100vh - 64px - 64px - 32px);
+  margin: -32px -40px;
+  display: flex;
+}
+
+@media (max-width: 768px) {
+  .ai-section {
+    margin: -24px -20px;
+    height: calc(100vh - 64px - 48px);
+  }
 }
 </style>
